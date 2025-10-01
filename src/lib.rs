@@ -1,6 +1,4 @@
-use std::ops::Range;
-
-use xml::{common::Position, reader::XmlEvent, EventReader};
+use xml::{reader::XmlEvent, EventReader};
 
 #[macro_use]
 extern crate serde_derive;
@@ -172,45 +170,10 @@ fn find_signed_info<'a>(events: &'a [xml::reader::XmlEvent]) -> Option<&'a [xml:
     Some(&events[elm_i..elm_end_i + 1])
 }
 
-// enum InnerAlgorithmData<'a> {
-//     NodeSet(&'a [xml::reader::XmlEvent]),
-//     OctetStream(&'a str),
-// }
-
-// #[derive(Debug)]
-// enum AlgorithmData<'a> {
-//     NodeSet(&'a [xml::reader::XmlEvent]),
-//     OctetStream(&'a str),
-//     OwnedNodeSet(Vec<xml::reader::XmlEvent>),
-//     OwnedOctetStream(String),
-// }
-
 #[derive(Debug)]
 struct OwnedOctetStream(String);
-// #[derive(Debug)]
-// struct OctetStream<'a>(&'a str);
 #[derive(Debug)]
 struct NodeSet<'a>(&'a [XmlEvent]);
-// #[derive(Debug)]
-// struct OwnedNodeSet(Vec<XmlEvent>);
-
-
-// impl<'a> OwnedNodeSet {
-//     fn as_ref(&'a self) -> NodeSet<'a> {
-//         NodeSet(&self.0)
-//     }
-// }
-
-// impl<'a> AlgorithmData<'a> {
-//     fn into_inner_data(&'a self) -> InnerAlgorithmData<'a> {
-//         match self {
-//             AlgorithmData::NodeSet(n) => InnerAlgorithmData::NodeSet(n),
-//             AlgorithmData::OwnedNodeSet(n) => InnerAlgorithmData::NodeSet(n),
-//             AlgorithmData::OctetStream(o) => InnerAlgorithmData::OctetStream(o),
-//             AlgorithmData::OwnedOctetStream(o) => InnerAlgorithmData::OctetStream(o),
-//         }
-//     }
-// }
 
 fn transform_canonical_xml_1_0<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
     let canon_output = c14n::canonical_rfc3076(events.0, false, 0, false)?;
@@ -247,85 +210,6 @@ fn transform_exclusive_canonical_xml_1_0_with_comments<'a>(events: NodeSet<'a>) 
 
     Ok(OwnedOctetStream(canon_output))
 }
-
-// enum EnvelopedSignatureResult {
-//     FilteredOutAnythingButSignature(Vec<XmlEvent>),
-//     FoundWhereSignatureBeginsAndEnds(Range<usize>)
-// }
-
-// fn transform_enveloped_signature_inner<'a>(events: NodeSet<'a>, just_scroll: bool) -> Result<EnvelopedSignatureResult, String> {
-//     let mut level = 0;
-//     let mut output = vec![];
-//     let mut should_output = true;
-
-//     for evt in events.0 {
-//         match evt {
-//             xml::reader::XmlEvent::StartElement {
-//                 name, attributes, namespace
-//             } => {
-//                 level += 1;
-//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
-//                     should_output = false
-//                 }
-//                 if should_output && !just_scroll {
-//                     output.push(xml::reader::XmlEvent::StartElement {
-//                         name: name.to_owned(),
-//                         attributes: attributes.to_vec(),
-//                         namespace: namespace.to_owned(),
-//                     });
-//                 }
-//             }
-//             xml::reader::XmlEvent::EndElement {
-//                 name
-//             } => {
-//                 if should_output && !just_scroll {
-//                     output.push(xml::reader::XmlEvent::EndElement {
-//                         name: name.to_owned(),
-//                     });
-//                 }
-//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
-//                     should_output = true;
-//                 }
-//                 level -= 1;
-//             }
-//             e => {
-//                 if should_output && !just_scroll {
-//                     output.push(e.to_owned());
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(output)
-// }
-// fn transform_enveloped_signature_just_scroll<'a>(events: NodeSet<'a>, just_scroll: bool) -> Result<Range<usize>, String> {
-//     let mut level = 0;
-//     let mut signature_range: Range<usize> = 0..0;
-
-//     for evt in events.0 {
-//         match evt {
-//             xml::reader::XmlEvent::StartElement {
-//                 name, attributes, namespace
-//             } => {
-//                 level += 1;
-//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
-//                     events.position()
-//                 }
-//             }
-//             xml::reader::XmlEvent::EndElement {
-//                 name
-//             } => {
-//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
-//                 }
-//                 level -= 1;
-//             }
-//             e => { }
-//         }
-//     }
-
-//     Ok(output)
-// }
-
 
 fn transform_enveloped_signature<'a>(events: NodeSet<'a>) -> Result<Vec<XmlEvent>, String> {
     let mut level = 0;
@@ -410,14 +294,6 @@ enum ApplyTransformsResult {
 }
 
 fn apply_transforms<'a>(reference: &proto::ds::Reference, signed_data: NodeSet<'a>) -> Result<ApplyTransformsResult, String> {
-    // #[derive(Debug)]
-    // enum AD<'a> {
-    //     NodeSet(NodeSet<'a>),
-    //     OctetStream(OctetStream<'a>),
-    //     OwnedNodeSet(OwnedNodeSet),
-    //     OwnedOctetStream(OwnedOctetStream),
-    // }
-
 
     #[derive(Debug, Clone, Copy)]
     enum Transform {
@@ -456,7 +332,6 @@ fn apply_transforms<'a>(reference: &proto::ds::Reference, signed_data: NodeSet<'
         }
     }
 
-    // let signed_data = AD::NodeSet(signed_data);
 
     if let Some(transforms) = &reference.transforms {
         use Transform::*;
@@ -500,45 +375,9 @@ fn apply_transforms<'a>(reference: &proto::ds::Reference, signed_data: NodeSet<'
             }
             more_than_one_without_enveloped_as_first => panic!("unsupported transforms combination {:?}", more_than_one_without_enveloped_as_first)
         }
-        // match transforms.transforms {
-        //     [Transform
-        // }
-        // for transform in &transforms.transforms {
-        //     match transform.algorithm.as_str() {
-        //         TRANSFORM_ENVELOPED_SIGNATURE => {
-        //             signed_data = AD::OwnedNodeSet(OwnedNodeSet(transform_enveloped_signature(signed_data)?));
-        //         }
-        //         CANONICAL_1_0 => {
-        //             signed_data = transform_canonical_xml_1_0(signed_data)?;
-        //         }
-        //         CANONICAL_1_0_COMMENTS => {
-        //             signed_data = transform_canonical_xml_1_0_with_comments(signed_data)?;
-        //         }
-        //         CANONICAL_1_1 => {
-        //             signed_data = transform_canonical_xml_1_1(signed_data)?;
-        //         }
-        //         CANONICAL_1_1_COMMENTS => {
-        //             signed_data = transform_canonical_xml_1_1_with_comments(signed_data)?;
-        //         }
-        //         CANONICAL_EXCLUSIVE_1_0 => {
-        //             signed_data = transform_exclusive_canonical_xml_1_0(signed_data)?;
-        //         }
-        //         CANONICAL_EXCLUSIVE_1_0_COMMENTS => {
-        //             signed_data = transform_exclusive_canonical_xml_1_0_with_comments(signed_data)?;
-        //         }
-        //         u => {
-        //             return Err(format!("unsupported transformation: {}", u));
-        //         }
-        //     }
-        // }
     } else {
         panic!("no transforms")
     }
-
-    // Ok(match signed_data.into_inner_data() {
-    //     InnerAlgorithmData::OctetStream(o) => o.to_string(),
-    //     _ => return Err("transforms did not output octet stream".to_string())
-    // })
 }
 
 fn map_digest(dm: &proto::ds::DigestMethod) -> Result<openssl::hash::MessageDigest, String> {
@@ -683,13 +522,6 @@ fn reader(source_xml: &str) -> EventReader<&[u8]> {
 }
 
 pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, String> {
-    // let read_xml = reader.
-    // reader.position()
-    // let reader = reader.into_inner();
-    
-    // let reader = reader.into_iter().collect::<Result<Vec<_>, _>>().map_err(|e| format!("unable to decode XML: {}", e))?;
-
-
     let mut i = 0;
     let mut level = 0;
     let mut seen_level = usize::MAX;
@@ -713,7 +545,6 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
                         if level < seen_level && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && &name.local_name == "Signature" {
                             seen_level = level;
                             sig_i = i;
-                            // sig_elems.push(e.clone());
                             signature_start_and_end_as_indexes_into_u8_buffer.start = previous_position;
                         }
                     }
@@ -723,12 +554,10 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
                         if level == seen_level && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && &name.local_name == "Signature" {
                             seen_level = level;
                             sig_end_i = i;
-                            // sig_elems.push(e.clone());
                             signature_start_and_end_as_indexes_into_u8_buffer.end = source_len - r.source().len();
                         }
                         level -= 1;
                     }
-                    // _ if sig_i != usize::MAX && sig_end_i == usize::MAX => sig_elems.push(e),
                     _ => {}
                 }
                 if (sig_i != usize::MAX || sig_i == i) && (sig_end_i == usize::MAX || sig_end_i == i){ 
@@ -743,10 +572,6 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
     if sig_i == i {
         return Ok(Output::Unsigned(source_xml.to_string()));
     }
-    // dbg!(&sig_elems);
-    // dbg!(&reader(source_xml).into_iter().collect::<Result<Vec<_>,_>>().map_err(|e| format!("{e:?}"))?[sig_i..sig_end_i+1]);
-    // let all = reader(source_xml).into_iter();
-    // let sig_elems = &all.collect::<Result<Vec<_>,_>>().map_err(|e| format!("{e:?}"))?[sig_i..sig_end_i+1];
 
     let sig_elems_for_xml_serde = sig_elems.iter().map(|e| xml::reader::Result::Ok(e.to_owned())).collect::<Vec<_>>();
     // this is fucked, I got a forever loop with some code issue -> this implies an improper xml can cause a DDOS attack ... :(
@@ -754,7 +579,6 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
         Ok(s) => s,
         Err(e) => return Err(format!("unable to decode XML signature: {}", e))
     };
-    // let sig_elems = sig_elems.into_iter().collect::<Result<Vec<_>,_>>().map_err(|e| format!("unable to decode signature XML: {}", e))?;
 
     let mut verified_outputs = vec![];
 

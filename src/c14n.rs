@@ -1,26 +1,21 @@
 use aho_corasick::AhoCorasick;
 
 fn canon_attr_map<'a>(a: &'a xml::attribute::OwnedAttribute) -> (xml::name::Name<'a>, String) {
-    // let attribute_re = regex::Regex::new(r"[ \r\n\t]").unwrap();
-    let from =  [" ", "\r", "\n", "\t", "&", "<", "\""];
-    let to = [" ", "&#xD;", " ", " ", "&amp;", "&lt;", "&quot;"];
-
-            // .replace("<", "&lt;")
-            // .replace("\"", "&quot;")
-            // .replace("\r", "&#xD;")
+    // TODO: pull out the building of the ahocorasick automaton outside this function
+    let from =  ["\r", "&", "<", "\""];
+    let to = ["&#xD;", "&amp;", "&lt;", "&quot;"];
     let ac = AhoCorasick::new(from).unwrap();
+
+    let from2 =  ["\r", "\n", "\t"];
+    let to2 = [" ", " ", " "];
+    let ac2 = AhoCorasick::new(from2).unwrap();
 
     (
         a.name.borrow(),
-        ac.replace_all(&a.value, &to)
-        // ac.replace_all(&a.value,
-        // a.value
-        //     .replace("\n", " ")
-        //     .replace("\t", " ")
-        //     .replace("&", "&amp;")
-        //     .replace("<", "&lt;")
-        //     .replace("\"", "&quot;")
-        //     .replace("\r", "&#xD;")
+        ac.replace_all(
+            &ac2.replace_all(&a.value, &to2),
+            &to
+        )
     )
 }
 
@@ -39,12 +34,6 @@ pub fn canonical_rfc3076(events: &[xml::reader::XmlEvent], include_comments: boo
             ..std::default::Default::default()
         },
     );
-
-                            // .replace("\r\n", "\n")
-                            // .replace("&", "&amp;")
-                            // .replace("<", "&lt;")
-                            // .replace(">", "&gt;")
-                            // .replace("\r", "&#xD;")
 
     let from =  ["\r\n", "\r", "<", ">", "&"];
     let to = ["\n", "&#xD;", "&lt;", "&gt;", "&amp;"];
