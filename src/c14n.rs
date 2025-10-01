@@ -1,14 +1,26 @@
+use aho_corasick::AhoCorasick;
+
 fn canon_attr_map<'a>(a: &'a xml::attribute::OwnedAttribute) -> (xml::name::Name<'a>, String) {
-    let attribute_re = regex::Regex::new(r"[ \r\n\t]").unwrap();
+    // let attribute_re = regex::Regex::new(r"[ \r\n\t]").unwrap();
+    let from =  [" ", "\r", "\n", "\t", "&", "<", "\""];
+    let to = [" ", "&#xD;", " ", " ", "&amp;", "&lt;", "&quot;"];
+
+            // .replace("<", "&lt;")
+            // .replace("\"", "&quot;")
+            // .replace("\r", "&#xD;")
+    let ac = AhoCorasick::new(from).unwrap();
 
     (
         a.name.borrow(),
-        attribute_re
-            .replace_all(&a.value, " ")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace("\"", "&quot;")
-            .replace("\r", "&#xD;")
+        ac.replace_all(&a.value, &to)
+        // ac.replace_all(&a.value,
+        // a.value
+        //     .replace("\n", " ")
+        //     .replace("\t", " ")
+        //     .replace("&", "&amp;")
+        //     .replace("<", "&lt;")
+        //     .replace("\"", "&quot;")
+        //     .replace("\r", "&#xD;")
     )
 }
 
@@ -27,6 +39,16 @@ pub fn canonical_rfc3076(events: &[xml::reader::XmlEvent], include_comments: boo
             ..std::default::Default::default()
         },
     );
+
+                            // .replace("\r\n", "\n")
+                            // .replace("&", "&amp;")
+                            // .replace("<", "&lt;")
+                            // .replace(">", "&gt;")
+                            // .replace("\r", "&#xD;")
+
+    let from =  ["\r\n", "\r", "<", ">", "&"];
+    let to = ["\n", "&#xD;", "&lt;", "&gt;", "&amp;"];
+    let ac = AhoCorasick::new(from).unwrap();
 
     let mut level: usize = 0;
     let mut xml_ns_attrs = vec![];
@@ -147,12 +169,7 @@ pub fn canonical_rfc3076(events: &[xml::reader::XmlEvent], include_comments: boo
             xml::reader::XmlEvent::CData(data) => {
                 if i >= offset {
                     output_writer.write(xml::writer::XmlEvent::Characters(
-                        &data
-                            .replace("\r\n", "\n")
-                            .replace("&", "&amp;")
-                            .replace("<", "&lt;")
-                            .replace(">", "&gt;")
-                            .replace("\r", "&#xD;")
+                        &ac.replace_all(data, &to)
                     ))
                 } else {
                     Ok(())
@@ -179,12 +196,7 @@ pub fn canonical_rfc3076(events: &[xml::reader::XmlEvent], include_comments: boo
             xml::reader::XmlEvent::Characters(data) => {
                 if i >= offset {
                     output_writer.write(xml::writer::XmlEvent::Characters(
-                        &data
-                            .replace("\r\n", "\n")
-                            .replace("&", "&amp;")
-                            .replace("<", "&lt;")
-                            .replace(">", "&gt;")
-                            .replace("\r", "&#xD;")
+                        &ac.replace_all(data, &to)
                     ))
                 } else {
                     Ok(())

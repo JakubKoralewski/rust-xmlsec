@@ -1,3 +1,7 @@
+use std::ops::Range;
+
+use xml::{common::Position, reader::XmlEvent, EventReader};
+
 #[macro_use]
 extern crate serde_derive;
 
@@ -168,107 +172,167 @@ fn find_signed_info<'a>(events: &'a [xml::reader::XmlEvent]) -> Option<&'a [xml:
     Some(&events[elm_i..elm_end_i + 1])
 }
 
-enum InnerAlgorithmData<'a> {
-    NodeSet(&'a [xml::reader::XmlEvent]),
-    OctetStream(&'a str),
-}
+// enum InnerAlgorithmData<'a> {
+//     NodeSet(&'a [xml::reader::XmlEvent]),
+//     OctetStream(&'a str),
+// }
+
+// #[derive(Debug)]
+// enum AlgorithmData<'a> {
+//     NodeSet(&'a [xml::reader::XmlEvent]),
+//     OctetStream(&'a str),
+//     OwnedNodeSet(Vec<xml::reader::XmlEvent>),
+//     OwnedOctetStream(String),
+// }
 
 #[derive(Debug)]
-enum AlgorithmData<'a> {
-    NodeSet(&'a [xml::reader::XmlEvent]),
-    OctetStream(&'a str),
-    OwnedNodeSet(Vec<xml::reader::XmlEvent>),
-    OwnedOctetStream(String),
+struct OwnedOctetStream(String);
+// #[derive(Debug)]
+// struct OctetStream<'a>(&'a str);
+#[derive(Debug)]
+struct NodeSet<'a>(&'a [XmlEvent]);
+// #[derive(Debug)]
+// struct OwnedNodeSet(Vec<XmlEvent>);
+
+
+// impl<'a> OwnedNodeSet {
+//     fn as_ref(&'a self) -> NodeSet<'a> {
+//         NodeSet(&self.0)
+//     }
+// }
+
+// impl<'a> AlgorithmData<'a> {
+//     fn into_inner_data(&'a self) -> InnerAlgorithmData<'a> {
+//         match self {
+//             AlgorithmData::NodeSet(n) => InnerAlgorithmData::NodeSet(n),
+//             AlgorithmData::OwnedNodeSet(n) => InnerAlgorithmData::NodeSet(n),
+//             AlgorithmData::OctetStream(o) => InnerAlgorithmData::OctetStream(o),
+//             AlgorithmData::OwnedOctetStream(o) => InnerAlgorithmData::OctetStream(o),
+//         }
+//     }
+// }
+
+fn transform_canonical_xml_1_0<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+    let canon_output = c14n::canonical_rfc3076(events.0, false, 0, false)?;
+
+    Ok(OwnedOctetStream(canon_output))
 }
 
-impl<'a> AlgorithmData<'a> {
-    fn into_inner_data(&'a self) -> InnerAlgorithmData<'a> {
-        match self {
-            AlgorithmData::NodeSet(n) => InnerAlgorithmData::NodeSet(n),
-            AlgorithmData::OwnedNodeSet(n) => InnerAlgorithmData::NodeSet(n),
-            AlgorithmData::OctetStream(o) => InnerAlgorithmData::OctetStream(o),
-            AlgorithmData::OwnedOctetStream(o) => InnerAlgorithmData::OctetStream(o),
-        }
-    }
+fn transform_canonical_xml_1_0_with_comments<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+    let canon_output = c14n::canonical_rfc3076(events.0, true, 0, false)?;
+
+    Ok(OwnedOctetStream(canon_output))
 }
 
-fn transform_canonical_xml_1_0<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for canonical XML 1.0".to_string())
-    };
+fn transform_canonical_xml_1_1<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+    let canon_output = c14n::canonical_rfc3076(events.0, false, 0, false)?;
 
-    let canon_output = c14n::canonical_rfc3076(events, false, 0, false)?;
-
-    Ok(AlgorithmData::OwnedOctetStream(canon_output))
+    Ok(OwnedOctetStream(canon_output))
 }
 
-fn transform_canonical_xml_1_0_with_comments<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for canonical XML 1.0 (with comments)".to_string())
-    };
+fn transform_canonical_xml_1_1_with_comments<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+    let canon_output = c14n::canonical_rfc3076(events.0, true, 0, false)?;
 
-    let canon_output = c14n::canonical_rfc3076(events, true, 0, false)?;
-
-    Ok(AlgorithmData::OwnedOctetStream(canon_output))
+    Ok(OwnedOctetStream(canon_output))
 }
 
-fn transform_canonical_xml_1_1<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for canonical XML 1.1".to_string())
-    };
+fn transform_exclusive_canonical_xml_1_0<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+    let canon_output = c14n::canonical_rfc3076(events.0, false, 0, true)?;
 
-    let canon_output = c14n::canonical_rfc3076(events, false, 0, false)?;
-
-    Ok(AlgorithmData::OwnedOctetStream(canon_output))
+    Ok(OwnedOctetStream(canon_output))
 }
 
-fn transform_canonical_xml_1_1_with_comments<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for canonical XML 1.1 (with comments)".to_string())
-    };
+fn transform_exclusive_canonical_xml_1_0_with_comments<'a>(events: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+    let canon_output = c14n::canonical_rfc3076(events.0, true, 0, true)?;
 
-    let canon_output = c14n::canonical_rfc3076(events, true, 0, false)?;
-
-    Ok(AlgorithmData::OwnedOctetStream(canon_output))
+    Ok(OwnedOctetStream(canon_output))
 }
 
-fn transform_exclusive_canonical_xml_1_0<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for exclusive canonical XML 1.0".to_string())
-    };
+// enum EnvelopedSignatureResult {
+//     FilteredOutAnythingButSignature(Vec<XmlEvent>),
+//     FoundWhereSignatureBeginsAndEnds(Range<usize>)
+// }
 
-    let canon_output = c14n::canonical_rfc3076(events, false, 0, true)?;
+// fn transform_enveloped_signature_inner<'a>(events: NodeSet<'a>, just_scroll: bool) -> Result<EnvelopedSignatureResult, String> {
+//     let mut level = 0;
+//     let mut output = vec![];
+//     let mut should_output = true;
 
-    Ok(AlgorithmData::OwnedOctetStream(canon_output))
-}
+//     for evt in events.0 {
+//         match evt {
+//             xml::reader::XmlEvent::StartElement {
+//                 name, attributes, namespace
+//             } => {
+//                 level += 1;
+//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
+//                     should_output = false
+//                 }
+//                 if should_output && !just_scroll {
+//                     output.push(xml::reader::XmlEvent::StartElement {
+//                         name: name.to_owned(),
+//                         attributes: attributes.to_vec(),
+//                         namespace: namespace.to_owned(),
+//                     });
+//                 }
+//             }
+//             xml::reader::XmlEvent::EndElement {
+//                 name
+//             } => {
+//                 if should_output && !just_scroll {
+//                     output.push(xml::reader::XmlEvent::EndElement {
+//                         name: name.to_owned(),
+//                     });
+//                 }
+//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
+//                     should_output = true;
+//                 }
+//                 level -= 1;
+//             }
+//             e => {
+//                 if should_output && !just_scroll {
+//                     output.push(e.to_owned());
+//                 }
+//             }
+//         }
+//     }
 
-fn transform_exclusive_canonical_xml_1_0_with_comments<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for exclusive canonical XML 1.0 (with comments)".to_string())
-    };
+//     Ok(output)
+// }
+// fn transform_enveloped_signature_just_scroll<'a>(events: NodeSet<'a>, just_scroll: bool) -> Result<Range<usize>, String> {
+//     let mut level = 0;
+//     let mut signature_range: Range<usize> = 0..0;
 
-    let canon_output = c14n::canonical_rfc3076(events, true, 0, true)?;
+//     for evt in events.0 {
+//         match evt {
+//             xml::reader::XmlEvent::StartElement {
+//                 name, attributes, namespace
+//             } => {
+//                 level += 1;
+//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
+//                     events.position()
+//                 }
+//             }
+//             xml::reader::XmlEvent::EndElement {
+//                 name
+//             } => {
+//                 if level == 2 && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && name.local_name == "Signature" {
+//                 }
+//                 level -= 1;
+//             }
+//             e => { }
+//         }
+//     }
 
-    Ok(AlgorithmData::OwnedOctetStream(canon_output))
-}
+//     Ok(output)
+// }
 
-fn transform_enveloped_signature<'a>(events: AlgorithmData<'a>) -> Result<AlgorithmData, String> {
-    let events = match events.into_inner_data() {
-        InnerAlgorithmData::NodeSet(e) => e,
-        _ => return Err("unsupported input format for envelopd signature transform".to_string())
-    };
 
+fn transform_enveloped_signature<'a>(events: NodeSet<'a>) -> Result<Vec<XmlEvent>, String> {
     let mut level = 0;
     let mut output = vec![];
     let mut should_output = true;
 
-    for evt in events {
+    for evt in events.0 {
         match evt {
             xml::reader::XmlEvent::StartElement {
                 name, attributes, namespace
@@ -306,7 +370,7 @@ fn transform_enveloped_signature<'a>(events: AlgorithmData<'a>) -> Result<Algori
         }
     }
 
-    Ok(AlgorithmData::OwnedNodeSet(output))
+    Ok(output)
 }
 
 pub const DIGEST_SHA1: &'static str = "http://www.w3.org/2000/09/xmldsig#sha1";
@@ -340,42 +404,141 @@ pub const SIGNATURE_ECDSA_RIPEMD160: &'static str = "http://www.w3.org/2001/04/x
 pub const SIGNATURE_DSA_SHA1: &'static str = "http://www.w3.org/2000/09/xmldsig#dsa-sha1";
 pub const SIGNATURE_DSA_SHA256: &'static str = "http://www.w3.org/2009/xmldsig11#dsa-sha256";
 
-fn apply_transforms<'a>(reference: &proto::ds::Reference, mut signed_data: AlgorithmData<'a>) -> Result<String, String> {
-    if let Some(transforms) = &reference.transforms {
-        for transform in &transforms.transforms {
-            match transform.algorithm.as_str() {
-                TRANSFORM_ENVELOPED_SIGNATURE => {
-                    signed_data = transform_enveloped_signature(signed_data)?;
-                }
-                CANONICAL_1_0 => {
-                    signed_data = transform_canonical_xml_1_0(signed_data)?;
-                }
-                CANONICAL_1_0_COMMENTS => {
-                    signed_data = transform_canonical_xml_1_0_with_comments(signed_data)?;
-                }
-                CANONICAL_1_1 => {
-                    signed_data = transform_canonical_xml_1_1(signed_data)?;
-                }
-                CANONICAL_1_1_COMMENTS => {
-                    signed_data = transform_canonical_xml_1_1_with_comments(signed_data)?;
-                }
-                CANONICAL_EXCLUSIVE_1_0 => {
-                    signed_data = transform_exclusive_canonical_xml_1_0(signed_data)?;
-                }
-                CANONICAL_EXCLUSIVE_1_0_COMMENTS => {
-                    signed_data = transform_exclusive_canonical_xml_1_0_with_comments(signed_data)?;
-                }
-                u => {
-                    return Err(format!("unsupported transformation: {}", u));
-                }
+enum ApplyTransformsResult {
+    Canonicalized(OwnedOctetStream),
+    OnlyEnveloped
+}
+
+fn apply_transforms<'a>(reference: &proto::ds::Reference, signed_data: NodeSet<'a>) -> Result<ApplyTransformsResult, String> {
+    // #[derive(Debug)]
+    // enum AD<'a> {
+    //     NodeSet(NodeSet<'a>),
+    //     OctetStream(OctetStream<'a>),
+    //     OwnedNodeSet(OwnedNodeSet),
+    //     OwnedOctetStream(OwnedOctetStream),
+    // }
+
+
+    #[derive(Debug, Clone, Copy)]
+    enum Transform {
+        TransformEnvelopedSignature,
+        Canonical1_0,
+        Canonical1_0Comments,
+        Canonical1_1,
+        Canonical1_1Comments,
+        CanonicalExclusive1_0,
+        CanonicalExclusive1_0Comments,
+    }
+    fn apply_single_non_enveloped_transform<'a>(transform: Transform, signed_data: NodeSet<'a>) -> Result<OwnedOctetStream, String> {
+        use Transform::*;
+        match transform {
+            TransformEnvelopedSignature => {
+                panic!("enveloped signature should have been handled earlier");
+            }
+            Canonical1_0 => {
+                transform_canonical_xml_1_0(signed_data)
+            }
+            Canonical1_0Comments => {
+                transform_canonical_xml_1_0_with_comments(signed_data)
+            }
+            Canonical1_1 => {
+                transform_canonical_xml_1_1(signed_data)
+            }
+            Canonical1_1Comments => {
+                transform_canonical_xml_1_1_with_comments(signed_data)
+            }
+            CanonicalExclusive1_0 => {
+                transform_exclusive_canonical_xml_1_0(signed_data)
+            }
+            CanonicalExclusive1_0Comments => {
+                transform_exclusive_canonical_xml_1_0_with_comments(signed_data)
             }
         }
     }
 
-    Ok(match signed_data.into_inner_data() {
-        InnerAlgorithmData::OctetStream(o) => o.to_string(),
-        _ => return Err("transforms did not output octet stream".to_string())
-    })
+    // let signed_data = AD::NodeSet(signed_data);
+
+    if let Some(transforms) = &reference.transforms {
+        use Transform::*;
+        let transforms: Vec<Transform> = transforms.transforms.iter().map(|t| 
+            match t.algorithm.as_str() {
+                TRANSFORM_ENVELOPED_SIGNATURE => {
+                   TransformEnvelopedSignature 
+                }
+                CANONICAL_1_0 => {
+                    Canonical1_0
+                }
+                CANONICAL_1_0_COMMENTS => {
+                    Canonical1_0Comments
+                }
+                CANONICAL_1_1 => {
+                    Canonical1_1
+                }
+                CANONICAL_1_1_COMMENTS => {
+                    Canonical1_1Comments
+                }
+                CANONICAL_EXCLUSIVE_1_0 => {
+                    CanonicalExclusive1_0
+                }
+                CANONICAL_EXCLUSIVE_1_0_COMMENTS => {
+                    CanonicalExclusive1_0Comments
+                }
+                u => {
+                    panic!("unsupported transformation: {}", u);
+                }
+        }).collect();
+        match &transforms[..] {
+            [TransformEnvelopedSignature] => {
+                Ok(ApplyTransformsResult::OnlyEnveloped)
+            }
+            [TransformEnvelopedSignature, second] => {
+                let enveloped = transform_enveloped_signature(signed_data)?;
+                Ok(ApplyTransformsResult::Canonicalized(apply_single_non_enveloped_transform(*second, NodeSet(&enveloped))?))
+            }
+            [one_not_enveloped] => {
+                Ok(ApplyTransformsResult::Canonicalized(apply_single_non_enveloped_transform(*one_not_enveloped, signed_data)?))
+            }
+            more_than_one_without_enveloped_as_first => panic!("unsupported transforms combination {:?}", more_than_one_without_enveloped_as_first)
+        }
+        // match transforms.transforms {
+        //     [Transform
+        // }
+        // for transform in &transforms.transforms {
+        //     match transform.algorithm.as_str() {
+        //         TRANSFORM_ENVELOPED_SIGNATURE => {
+        //             signed_data = AD::OwnedNodeSet(OwnedNodeSet(transform_enveloped_signature(signed_data)?));
+        //         }
+        //         CANONICAL_1_0 => {
+        //             signed_data = transform_canonical_xml_1_0(signed_data)?;
+        //         }
+        //         CANONICAL_1_0_COMMENTS => {
+        //             signed_data = transform_canonical_xml_1_0_with_comments(signed_data)?;
+        //         }
+        //         CANONICAL_1_1 => {
+        //             signed_data = transform_canonical_xml_1_1(signed_data)?;
+        //         }
+        //         CANONICAL_1_1_COMMENTS => {
+        //             signed_data = transform_canonical_xml_1_1_with_comments(signed_data)?;
+        //         }
+        //         CANONICAL_EXCLUSIVE_1_0 => {
+        //             signed_data = transform_exclusive_canonical_xml_1_0(signed_data)?;
+        //         }
+        //         CANONICAL_EXCLUSIVE_1_0_COMMENTS => {
+        //             signed_data = transform_exclusive_canonical_xml_1_0_with_comments(signed_data)?;
+        //         }
+        //         u => {
+        //             return Err(format!("unsupported transformation: {}", u));
+        //         }
+        //     }
+        // }
+    } else {
+        panic!("no transforms")
+    }
+
+    // Ok(match signed_data.into_inner_data() {
+    //     InnerAlgorithmData::OctetStream(o) => o.to_string(),
+    //     _ => return Err("transforms did not output octet stream".to_string())
+    // })
 }
 
 fn map_digest(dm: &proto::ds::DigestMethod) -> Result<openssl::hash::MessageDigest, String> {
@@ -508,61 +671,98 @@ pub enum Output {
     Unsigned(String),
 }
 
-pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, String> {
-    let reader = xml::reader::EventReader::new_with_config(
+fn reader(source_xml: &str) -> EventReader<&[u8]> {
+    xml::reader::EventReader::new_with_config(
         source_xml.as_bytes(),
         xml::ParserConfig::new()
             .ignore_comments(false)
             .trim_whitespace(false)
             .coalesce_characters(false)
             .ignore_root_level_whitespace(true),
-    ).into_iter().collect::<Result<Vec<_>, _>>().map_err(|e| format!("unable to decode XML: {}", e))?;
+    )
+}
+
+pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, String> {
+    // let read_xml = reader.
+    // reader.position()
+    // let reader = reader.into_inner();
+    
+    // let reader = reader.into_iter().collect::<Result<Vec<_>, _>>().map_err(|e| format!("unable to decode XML: {}", e))?;
+
 
     let mut i = 0;
     let mut level = 0;
-    let mut seen_level = reader.len();
+    let mut seen_level = usize::MAX;
     let mut sig_i = seen_level;
+    let mut signature_start_and_end_as_indexes_into_u8_buffer = 0usize..0;
     let mut sig_end_i = seen_level;
-    for evt in &reader {
-        match evt {
-            xml::reader::XmlEvent::StartElement {
-                name, ..
-            } => {
-                level += 1;
-                if level < seen_level && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && &name.local_name == "Signature" {
-                    seen_level = level;
-                    sig_i = i;
+    let mut sig_elems = Vec::with_capacity(12);
+    let mut r = reader(source_xml);
+    let source_len = r.source().len();
+    let mut previous_position = 0usize;
+    loop {
+        match r.next() {
+            Err(e) => return Err(format!("unable to decode xml: {e}")),
+            Ok(xml::reader::XmlEvent::EndDocument) => break,
+            Ok(e) => {
+                match e {
+                    xml::reader::XmlEvent::StartElement {
+                        ref name, ..
+                    } => {
+                        level += 1;
+                        if level < seen_level && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && &name.local_name == "Signature" {
+                            seen_level = level;
+                            sig_i = i;
+                            // sig_elems.push(e.clone());
+                            signature_start_and_end_as_indexes_into_u8_buffer.start = previous_position;
+                        }
+                    }
+                    xml::reader::XmlEvent::EndElement {
+                        ref name, ..
+                    } => {
+                        if level == seen_level && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && &name.local_name == "Signature" {
+                            seen_level = level;
+                            sig_end_i = i;
+                            // sig_elems.push(e.clone());
+                            signature_start_and_end_as_indexes_into_u8_buffer.end = source_len - r.source().len();
+                        }
+                        level -= 1;
+                    }
+                    // _ if sig_i != usize::MAX && sig_end_i == usize::MAX => sig_elems.push(e),
+                    _ => {}
                 }
-            }
-            xml::reader::XmlEvent::EndElement {
-                name, ..
-            } => {
-                if level == seen_level && name.namespace.as_deref() == Some("http://www.w3.org/2000/09/xmldsig#") && &name.local_name == "Signature" {
-                    seen_level = level;
-                    sig_end_i = i;
+                if (sig_i != usize::MAX || sig_i == i) && (sig_end_i == usize::MAX || sig_end_i == i){ 
+                    sig_elems.push(e);
                 }
-                level -= 1;
+                previous_position = source_len - r.source().len();
+                i += 1;
             }
-            _ => {}
         }
-        i += 1;
     }
 
-    if sig_i == reader.len() {
+    if sig_i == i {
         return Ok(Output::Unsigned(source_xml.to_string()));
     }
+    // dbg!(&sig_elems);
+    // dbg!(&reader(source_xml).into_iter().collect::<Result<Vec<_>,_>>().map_err(|e| format!("{e:?}"))?[sig_i..sig_end_i+1]);
+    // let all = reader(source_xml).into_iter();
+    // let sig_elems = &all.collect::<Result<Vec<_>,_>>().map_err(|e| format!("{e:?}"))?[sig_i..sig_end_i+1];
 
-    let sig_elems = reader[sig_i..sig_end_i + 1].iter().map(|e| xml::reader::Result::Ok(e.to_owned())).collect::<Vec<_>>();
-    let sig: proto::ds::OuterSignatre = match xml_serde::from_events(sig_elems.as_slice()) {
+    let sig_elems_for_xml_serde = sig_elems.iter().map(|e| xml::reader::Result::Ok(e.to_owned())).collect::<Vec<_>>();
+    // this is fucked, I got a forever loop with some code issue -> this implies an improper xml can cause a DDOS attack ... :(
+    let sig: proto::ds::OuterSignatre = match xml_serde::from_events(sig_elems_for_xml_serde.as_slice()) {
         Ok(s) => s,
         Err(e) => return Err(format!("unable to decode XML signature: {}", e))
     };
+    // let sig_elems = sig_elems.into_iter().collect::<Result<Vec<_>,_>>().map_err(|e| format!("unable to decode signature XML: {}", e))?;
 
     let mut verified_outputs = vec![];
 
+    let reader = reader(source_xml).into_iter().collect::<Result<Vec<_>,_>>().map_err(|e| format!("unable to decode XML: {}", e))?;
+
     for reference in &sig.signature.signed_info.reference {
         let u = reference.uri.as_deref().unwrap_or_default();
-        let signed_data = apply_transforms(reference, AlgorithmData::NodeSet(if u == "" {
+        let transforms_result = apply_transforms(reference, NodeSet(if u == "" {
             reader.as_slice()
         } else if u.starts_with("#") {
             match find_events_slice_by_id(&reader, &u[1..]) {
@@ -581,22 +781,38 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
         };
 
         let dm = map_digest(&reference.digest_method)?;
-        let digest = match openssl::hash::hash(dm, signed_data.as_bytes()) {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(format!("openssl error: {}", e));
-            }
+        let digest = match &transforms_result {
+            ApplyTransformsResult::Canonicalized(owned_octet_stream) => {
+                match openssl::hash::hash(dm, owned_octet_stream.0.as_bytes()) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        return Err(format!("openssl error: {}", e));
+                    }
+                }
+            },
+            ApplyTransformsResult::OnlyEnveloped => {
+                let mut hasher = openssl::hash::Hasher::new(dm).map_err(|e| format!("opensslerror: {e}"))?;
+                hasher.update(&source_xml.as_bytes()[..signature_start_and_end_as_indexes_into_u8_buffer.start]).expect("can't handle openssl failing tbh");
+                hasher.update(&source_xml.as_bytes()[signature_start_and_end_as_indexes_into_u8_buffer.end..]).expect("can't handle openssl failing tbh");
+                hasher.finish().map_err(|e| format!("opensslerror: {e}"))?
+            },
         };
 
         if digest.as_ref() != provided_digest {
             return Err("digest does not match".to_string());
         }
 
-        verified_outputs.push(signed_data);
+        match transforms_result {
+            ApplyTransformsResult::Canonicalized(owned_octet_stream) => verified_outputs.push(owned_octet_stream.0),
+            ApplyTransformsResult::OnlyEnveloped => {
+                verified_outputs.push(source_xml[..signature_start_and_end_as_indexes_into_u8_buffer.start].to_string());
+                verified_outputs.push(source_xml[signature_start_and_end_as_indexes_into_u8_buffer.end..].to_string());
+            },
+        }
     }
 
-    let signed_info_events = AlgorithmData::NodeSet(find_signed_info(&reader[sig_i..sig_end_i + 1]).unwrap());
-    let signed_info_data = match match sig.signature.signed_info.canonicalization_method.algorithm.as_str() {
+    let signed_info_events = NodeSet(find_signed_info(&sig_elems).unwrap());
+    let signed_info_data = match sig.signature.signed_info.canonicalization_method.algorithm.as_str() {
         CANONICAL_1_0 => {
             transform_canonical_xml_1_0(signed_info_events)?
         }
@@ -616,9 +832,6 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
             transform_exclusive_canonical_xml_1_0_with_comments(signed_info_events)?
         }
         u => return Err(format!("unsupported canonicalisation method: {}", u))
-    }.into_inner_data() {
-        InnerAlgorithmData::OctetStream(o) => o.to_string(),
-        _ => unreachable!()
     };
 
     let pkey = if let Some(ki) = &sig.signature.key_info {
@@ -640,7 +853,7 @@ pub fn decode_and_verify_signed_document(source_xml: &str) -> Result<Output, Str
         &sig.signature.signed_info.signature_method,
         &pkey,
         &sig_data,
-        signed_info_data.as_bytes(),
+        signed_info_data.0.as_bytes(),
     ) {
         return Err("signature does not verify".to_string());
     }
@@ -666,12 +879,8 @@ pub fn sign_document(
         return Err("public and private key don't match".to_string());
     }
 
-    let canonicalisied_events = match transform_exclusive_canonical_xml_1_0(AlgorithmData::NodeSet(events))?.into_inner_data() {
-        InnerAlgorithmData::OctetStream(s) => s.to_string(),
-        _ => unreachable!()
-    };
-
-    let digest = match openssl::hash::hash(openssl::hash::MessageDigest::sha256(), canonicalisied_events.as_bytes()) {
+    let c14ed_events = transform_exclusive_canonical_xml_1_0(NodeSet(events))?;
+    let digest = match openssl::hash::hash(openssl::hash::MessageDigest::sha256(), c14ed_events.0.as_bytes()) {
         Ok(d) => d,
         Err(e) => {
             return Err(format!("openssl error: {}", e));
@@ -715,10 +924,7 @@ pub fn sign_document(
     };
 
     let signed_info_events = xml_serde::to_events(&signed_info).unwrap();
-    let canonicalisied_signed_info_events = match transform_exclusive_canonical_xml_1_0(AlgorithmData::NodeSet(&signed_info_events))?.into_inner_data() {
-        InnerAlgorithmData::OctetStream(s) => s.to_string(),
-        _ => unreachable!()
-    };
+    let canonicalisied_signed_info_events = transform_exclusive_canonical_xml_1_0(NodeSet(&signed_info_events))?.0;
 
     let mut signer = match openssl::sign::Signer::new(digest_method, priv_key) {
         Ok(d) => d,
@@ -782,7 +988,7 @@ pub fn sign_document(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn sig_1() {
+    fn sig_verifies_good_xml() {
         pretty_env_logger::init();
 
         let source_xml = r##"<?xml version="1.0" encoding="UTF-8" standalone="no"?><saml2p:Response xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" Destination="https://as207960-neptune.eu.ngrok.io/saml2/assertion_consumer" ID="_63e92115c9dbe3c22e06a6f3c311392b" InResponseTo="test" IssueInstant="2021-07-29T12:34:42.465Z" Version="2.0"><saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">https://accounts.google.com/o/saml2?idpid=C01n8o8t6</saml2:Issuer><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/><ds:Reference URI="#_63e92115c9dbe3c22e06a6f3c311392b"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>HH+SiZfyXcyu7bSW7HzeR42JaHaAeACAkFIFK4X10LI=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>X7NJmvYyYpqqxdl2CUbI55a23BuekWiqJmLbLAzNR0IQfMZ2xCJf2Dcs3XWD0VEvtE1Mhrw905lK
@@ -808,6 +1014,46 @@ kO9N4axmKDI4W6XWtxTRifLySfnklNqn20MEF1PstW18lwkKCAninmVorqil5MKoXKjuFrBJv06u
 
         let verified = super::decode_and_verify_signed_document(source_xml).unwrap();
         println!("{:#?}", verified);
-        assert_eq!(verified.references.len(), 1);
+
+        match verified {
+            crate::Output::Verified { references, pkey } if references.len() == 1 => (),
+            _ => panic!("invalid {verified:?}")
+        }
+    }
+
+    #[test]
+    fn sig_rejects_manipulated_xml() {
+        pretty_env_logger::init();
+
+        let source_xml = r##"<?xml version="1.0" encoding="UTF-8" standalone="no"?><saml2p:Response xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" Destination="https://as207960-neptune.eu.ngrok.io/saml2/assertion_consumer" ID="_63e92115c9dbe3c22e06a6f3c311392b" InResponseTo="test" IssueInstant="2021-07-29T12:34:42.465Z" Version="2.0">XDXDXDXDX<saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">https://accounts.google.com/o/saml2?idpid=C01n8o8t6</saml2:Issuer><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/><ds:Reference URI="#_63e92115c9dbe3c22e06a6f3c311392b"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>HH+SiZfyXcyu7bSW7HzeR42JaHaAeACAkFIFK4X10LI=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>X7NJmvYyYpqqxdl2CUbI55a23BuekWiqJmLbLAzNR0IQfMZ2xCJf2Dcs3XWD0VEvtE1Mhrw905lK
+xoQ6IoUDo09bc5Om7ECE48V1MG90+Ds0fNKwGl+bXJp7/64H2qA1wucBfo1q4MrXpN15Z4tITLv7
+d1MI+4zeKtalCJflY0gmTrt1GjJ65mz2gUxLvNBnbzt6yfngqvQs1XcBL0Coot+YMJZeUmvPrYbT
+zWFYlDdxp79AjG0pM/IcDul0PxKwSctSaGaGxEmz1oJnrkw5EDvRBPdwhKm1e1sUXr/aCOzH1GYm
+fq2E4zhhTCjsvIW8zyH7ABk64+7w28rNmK/suw==</ds:SignatureValue><ds:KeyInfo><ds:X509Data><ds:X509SubjectName>ST=California,C=US,OU=Google For Work,CN=Google,L=Mountain View,O=Google Inc.</ds:X509SubjectName><ds:X509Certificate>MIIDdDCCAlygAwIBAgIGAXI4fvJmMA0GCSqGSIb3DQEBCwUAMHsxFDASBgNVBAoTC0dvb2dsZSBJ
+bmMuMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MQ8wDQYDVQQDEwZHb29nbGUxGDAWBgNVBAsTD0dv
+b2dsZSBGb3IgV29yazELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWEwHhcNMjAwNTIx
+MTgyOTAxWhcNMjUwNTIwMTgyOTAxWjB7MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEWMBQGA1UEBxMN
+TW91bnRhaW4gVmlldzEPMA0GA1UEAxMGR29vZ2xlMRgwFgYDVQQLEw9Hb29nbGUgRm9yIFdvcmsx
+CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
+MIIBCgKCAQEA399ymOjRthGk6J0whLP4GfxnkWXp8jL8ywpftyymO3k82zXSVZWXQEin1BbUiU1g
+iG+93pTu1s2cSFTPyGOpNqUPYwMfP2NPJPvN9AQKZq6tDWWP/KyvQumcmmK2nFezHqGvRLZDGOqM
+HjGq/XzwQSXX7eRGkexrKXvKOOhRUAgRmmZvrNqXmMpthj4S55uAP88814z96fMDnvP4U0qvN7zS
+MtA/aD/C8YcliSvBS1gA9EIYeklc8gL0btIxPHRY2tViU3TRq/Nl6OGee5n3oz1e9pG7Aj5klDYu
+uUaLXo9quzi8g8jcgnX5roPhnvtSkPbsRdGPq3YqDF8+Rq/wBwIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQBw42j9N6/1vEsxK4WTavsLuQzcuHomP4JiHIps31sThyKTolnu8v6J7ArznDUZz2k/PUqA
+Bi+gsU5C1/fibcbQ6xL8/TMlC3Rnwl33naWjph1pgfHU58zegSQB9nSvFtqIJqu5vdeLBbkX8+Ez
+PxqqTMVahAuXBHdDexvSk3tLpxbzhgfTYS4aGbGKTamnhkby66S9Ct1ugrWXg5xzNFDHMBkg6d+w
+kO9N4axmKDI4W6XWtxTRifLySfnklNqn20MEF1PstW18lwkKCAninmVorqil5MKoXKjuFrBJv06u
+3JTAEGYtBo4aAIrQFJlAIEUV4H0jbYAKo+drHEA86yqE</ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature><saml2p:Status><saml2p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></saml2p:Status><saml2:Assertion xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" ID="_3381066a8dfd537274b2f43fea8bec4c" IssueInstant="2021-07-29T12:34:42.465Z" Version="2.0"><saml2:Issuer>https://accounts.google.com/o/saml2?idpid=C01n8o8t6</saml2:Issuer><saml2:Subject><saml2:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">q@as207960.net</saml2:NameID><saml2:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"><saml2:SubjectConfirmationData InResponseTo="test" NotOnOrAfter="2021-07-29T12:39:42.465Z" Recipient="https://as207960-neptune.eu.ngrok.io/saml2/assertion_consumer"/></saml2:SubjectConfirmation></saml2:Subject><saml2:Conditions NotBefore="2021-07-29T12:29:42.465Z" NotOnOrAfter="2021-07-29T12:39:42.465Z"><saml2:AudienceRestriction><saml2:Audience>https://neptune.as207960.net/entity</saml2:Audience></saml2:AudienceRestriction></saml2:Conditions><saml2:AuthnStatement AuthnInstant="2021-07-28T21:51:07.000Z" SessionIndex="_3381066a8dfd537274b2f43fea8bec4c"><saml2:AuthnContext><saml2:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified</saml2:AuthnContextClassRef></saml2:AuthnContext></saml2:AuthnStatement></saml2:Assertion></saml2p:Response>"##;
+
+        let verified = super::decode_and_verify_signed_document(source_xml);
+        println!("{:#?}", verified);
+
+        match verified {
+            Ok(crate::Output::Verified { references, pkey }) => panic!("should have failed but got {references:?}, {pkey:?}"),
+            Ok(crate::Output::Unsigned(str)) => panic!("should have failed but got unsigned: {str:?}"),
+            Err(e) if e.contains("digest does not match") => (),
+            e => panic!("got wrong error {e:?}")
+        }
     }
 }
