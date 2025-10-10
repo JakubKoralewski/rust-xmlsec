@@ -20,4 +20,4 @@ openssl = "0.10"
 base64 = "0.13"
 aho-corasick = "1"
 
-[workspace]
+# [workspace]
